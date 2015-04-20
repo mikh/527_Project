@@ -1,6 +1,6 @@
 CC = g++
 CLAGS = -Wall
-INCLUDE = -I../../opencv-2.4.10/include/opencv
+INCLUDE = -Iopencv/include/opencv
 LDFLAGS = $(INCLUDE) -L/usr/local/lib \
           -lopencv_core -lopencv_highgui -lopencv_imgproc
 ALL = neural
