@@ -3,7 +3,7 @@ CLAGS = -Wall -lm
 #`pkg-config --cflags opencv`
 #INCLUDE = -I/usr/include/opencv -I/usr/include/opencv2
 #LDFLAGS = $(INCLUDE) -L/usr/lib/x86_64-linux-gnu -lopencv_core -lopencv_highgui -lopencv_imgproc `pkg-config --libs opencv`
-INCLUDE = -I/home/mikh/EC527/cflags/cflags/opencv -I/home/mikh/EC527/cflags/cflags/opencv
+INCLUDE = -I/home/mikh/EC527/cflags/cflags/opencv -I/home/mikh/EC527/cflags/cflags/opencv2
 LDFLAGS = $(INCLUDE) -L /home/mikh/EC527/libs/libs -lopencv_core -lopencv_highgui -lopencv_imgproc /home/mikh/EC527/libs/libs/libopencv_calib3d.so /home/mikh/EC527/libs/libs/libopencv_contrib.so /home/mikh/EC527/libs/libs/libopencv_core.so /home/mikh/EC527/libs/libs/libopencv_features2d.so /home/mikh/EC527/libs/libs/libopencv_flann.so /home/mikh/EC527/libs/libs/libopencv_gpu.so /home/mikh/EC527/libs/libs/libopencv_highgui.so /home/mikh/EC527/libs/libs/libopencv_imgproc.so /home/mikh/EC527/libs/libs/libopencv_legacy.so /home/mikh/EC527/libs/libs/libopencv_ml.so /home/mikh/EC527/libs/libs/libopencv_objdetect.so /home/mikh/EC527/libs/libs/libopencv_ocl.so /home/mikh/EC527/libs/libs/libopencv_photo.so /home/mikh/EC527/libs/libs/libopencv_stitching.so /home/mikh/EC527/libs/libs/libopencv_superres.so /home/mikh/EC527/libs/libs/libopencv_ts.so /home/mikh/EC527/libs/libs/libopencv_video.so /home/mikh/EC527/libs/libs/libopencv_videostab.so -lopencv_calib3d -lopencv_contrib -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_gpu -lopencv_highgui -lopencv_imgproc -lopencv_legacy -lopencv_ml -lopencv_objdetect -lopencv_ocl -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_ts -lopencv_video -lopencv_videostab  
 
 ALL = neural
