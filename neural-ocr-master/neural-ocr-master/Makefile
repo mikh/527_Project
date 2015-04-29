@@ -20,7 +20,7 @@ main_split_save_vectors.o: main_split_save_vectors.cpp
 	$(CC) $(CFLAGS) $(INCLUDE) -c main_split_save_vectors.cpp
 
 main_split_load_vectors.o: main_split_load_vectors.cpp
-	$(CC) $(CFLAGS) -c main_split_load_vectors.cpp
+	$(CC) $(CFLAGS) -c main_split_load_vectors.cpp -lrt
 
 NeuralNet.o: Neuron.h Layer.h NeuralNet.cpp NeuralNet.h
 	$(CC) $(CFLAGS) -c Neuron.h NeuralNet.cpp

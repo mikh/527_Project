@@ -6,6 +6,7 @@
 #include <string>
 #include <fstream>
 #include <cstring>
+#include <time.h>
 
 //#include "ImageData.h"
 #include "NeuralNet.h"
@@ -13,18 +14,28 @@
 #define IMG_SIZE 6*6
 #define ALPHABET_SIZE 10
 
+#define GIG 1000000000
+#define NANO_TO_MILLI 1000000
+#define CPG 2.53         // Cycles per GHz -- Adjust to your computer
+
 using namespace std;
 
 void save_double_results(vector<double>* data, char* data_location);
 void load_double_results(vector<double>* data, char* data_location);
 
 int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
+  struct timespec diff(struct timespec start, struct timespec end);
+  struct timespec time1, time2, elapsed_cpu;
+
   int correct = 0;
   int target_size = 6;
   char file_string[100];
 
   vector<double>* inputs = new vector<double>(IMG_SIZE);
   vector<double>* outputs = new vector<double>(ALPHABET_SIZE);
+
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+
 
   for (int j = 0; j < iterations; j++) {
     for (int i = 0; i < ALPHABET_SIZE; i++) {
@@ -69,6 +80,12 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
       
     }
   }
+
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+  elapsed_cpu = diff(time1, time2);
+
+  printf("\nCPU time: %f(msec)\n", (float)(((double)GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(double)NANO_TO_MILLI));
+
 
   delete inputs;
   delete outputs;
@@ -198,4 +215,22 @@ void load_double_results(vector<double>* data, char* data_location){
     data->push_back(strtod(str.c_str(), NULL));
   }
   file.close();
+}
+
+  
+
+ 
+
+
+struct timespec diff(struct timespec start, struct timespec end)
+{
+  struct timespec temp;
+  if ((end.tv_nsec-start.tv_nsec)<0) {
+    temp.tv_sec = end.tv_sec-start.tv_sec-1;
+    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+  } else {
+    temp.tv_sec = end.tv_sec-start.tv_sec;
+    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+  }
+  return temp;
 }
