@@ -1,0 +1,1 @@
+./neural_read -t 600 -T 100 -l 1 -b 60 -a 40 -r 55 -h 45
