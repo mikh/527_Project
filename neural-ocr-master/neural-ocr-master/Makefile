@@ -1,4 +1,4 @@
-CC = g++
+CC = nvcc
 CLAGS = -Wall -lm 
 #`pkg-config --cflags opencv`
 INCLUDE = -I/usr/include/opencv -I/usr/include/opencv2
