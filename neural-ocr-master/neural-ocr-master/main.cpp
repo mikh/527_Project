@@ -3,18 +3,30 @@
 #include <ctime>
 #include <iostream>
 #include <sstream>
+#include <time.h>
 
 #include "ImageData.h"
 #include "NeuralNet.h"
 
-#define IMG_SIZE 6*6
-#define ALPHABET_SIZE 10
+#define IMG_SIZE       6*6
+#define ALPHABET_SIZE  10
+#define OPTION         2
+#define GIG            1000000000
+#define CPG            2.53
+#define MAX_ITER
 
 using namespace std;
+
+struct timespec diff(struct timespec star, struct timespec end);
+struct timespec time1, time2;
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+
 
 int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   int correct = 0;
   int target_size = 6;
+  struct timespec time_stamp1[iterations+1][ALPHABET_SIZE];
+  struct timespec time_stamp2[iterations+1][ALPHABET_SIZE];
 
   vector<double>* inputs = new vector<double>(IMG_SIZE);
   vector<double>* outputs = new vector<double>(ALPHABET_SIZE);
@@ -32,7 +44,10 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
       }
       input.getPixels(inputs);
       outputs = new vector<double>(ALPHABET_SIZE);
+      clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
       nn.feedForward(inputs, outputs, bias);
+      clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+      time_stamp1[j][i] = diff(time1,time2);
 
       if (training) {
         double max_val = 0;
@@ -47,9 +62,14 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
           correct++;
         }
       } else {
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
         nn.backPropagate(outputs, i);
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+        time_stamp2[j][i] = diff(time1,time2);
       }
-    }
+      printf("time1 = %ld\n", (long int)((double)(CPG)*(double)(GIG * time_stamp1[j][i].tv_sec + time_stamp1[j][i].tv_nsec)));  
+      printf("time2 = %ld\n", (long int)((double)(CPG)*(double)(GIG * time_stamp2[j][i].tv_sec + time_stamp2[j][i].tv_nsec))); 
+    } 
   }
 
   delete inputs;
@@ -62,7 +82,7 @@ void process_and() {
   vector<double>* inputs = new vector<double>(2);
   vector<double>* outputs = new vector<double>(2);
   int correct = 0;
-
+  printf("PROCESS_AND()");
   for (int i = 0; i < 10000; i++) {
     double a, b, t;
     (*inputs)[0] = (rand() % 2 == 1) ? 1.0 : 0.0;
@@ -152,11 +172,39 @@ int main(int argc, char *argv[]) {
                learningRate,
                responseThreshold);
 
+  struct timespec time_stamp1, time_stamp2;
+
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
   process_ocr(false, nn, bias, training);
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+  time_stamp1 = diff(time1,time2);
+
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
   int correct = process_ocr(true, nn, bias, testing);
+  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+  time_stamp2 = diff(time1,time2);
 
   cout << "Success: " << correct << " / " << testing * 10
        << " (" << ((double)correct / (double)testing * 10) << "%)\n";
 
+  printf("time1 = %ld\n", (long int)((double)(CPG)*(double)(GIG * time_stamp1.tv_sec + time_stamp1.tv_nsec)));  
+  printf("time2 = %ld\n", (long int)((double)(CPG)*(double)(GIG * time_stamp2.tv_sec + time_stamp2.tv_nsec)));  
   return 0;
+}
+
+
+timespec diff(timespec start, timespec end)
+{
+  timespec temp; 
+  if ((end.tv_nsec - start.tv_sec)<0)
+  {
+    temp.tv_sec = end.tv_sec-start.tv_sec -1;
+    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+  }
+  else 
+  {
+    temp.tv_sec = end.tv_sec-start.tv_sec;
+    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+  }
+  return temp;
 }
