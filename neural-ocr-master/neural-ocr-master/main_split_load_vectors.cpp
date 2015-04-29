@@ -4,6 +4,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <fstream>
+#include <cstring>
 
 //#include "ImageData.h"
 #include "NeuralNet.h"
@@ -13,8 +15,8 @@
 
 using namespace std;
 
-void save_double_results(vector<double> &data, string data_location);
-void load_double_results(vector<double> &data, string data_location);
+void save_double_results(vector<double>* data, char* data_location);
+void load_double_results(vector<double>* data, char* data_location);
 
 int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   int correct = 0;
@@ -40,11 +42,11 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
       input.getPixels(inputs);
       */
 
-      sprintf(file_string, "data_text/%d/data_%d_%d.txt\0", i, i, j);
+      sprintf(file_string, "data_text/%d/data_%d_%d.txt", i, i, j);
    //   save_double_results(inputs, string(file_string));
 
       
-      load_double_results(inputs, string(file_string));
+      load_double_results(inputs, file_string);
 
       outputs = new vector<double>(ALPHABET_SIZE);
       nn.feedForward(inputs, outputs, bias);
@@ -178,21 +180,22 @@ int main(int argc, char *argv[]) {
 }
 
 
-void save_double_results(vector<double> &data, string data_location){
-	FILE *pfile;
-	pFile = fopen(data_location.c_str(), pFile);
-	for(int ii = 0; ii < data.size(); ii++){
-		fprintf(pFile, "%.15f\n", data[ii]);
-	}
+void save_double_results(vector<double>* data, char* data_location){
+  FILE *pFile;
+  pFile = fopen(data_location, "w");
+    for(int ii = 0; ii < data->size(); ii++){
+      fprintf(pFile, "%.15f\n", (*data)[ii]);
+    }
   fclose(pFile);
 }
 
-void load_double_results(vector<double> &data, string data_location){
-  data.clear();
-  ifstream file(data_location.c_str());
+void load_double_results(vector<double>* data, char* data_location){
+  data->clear();
+  ifstream file;
+  file.open(data_location);
   string str;
   while(getline(file, str)){
-    data.push_back(stod(str));
+    data->push_back(strtod(str.c_str(), NULL));
   }
   file.close();
 }
