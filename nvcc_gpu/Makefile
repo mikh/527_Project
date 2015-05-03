@@ -21,8 +21,8 @@ main_split_save_vectors_gpu.o: main_split_save_vectors_gpu.cu
 main_split_load_vectors_gpu.o: main_split_load_vectors_gpu.cu
 	$(CC) $(CFLAGS) -c main_split_load_vectors_gpu.cu -lrt
 
-NeuralNet.o: Neuron.h Layer.h NeuralNet.cpp NeuralNet.h
-	$(GCC) $(CFLAGS) -c Neuron.h NeuralNet.cpp
+NeuralNet.o: Neuron.h.cpp Layer.h.cpp NeuralNet.cu NeuralNet.h.cpp
+	$(CC) $(CFLAGS) -c Neuron.h.cpp NeuralNet.cu
 
 ImageData.o: ImageData.cpp ImageData.h
 	$(GCC) $(CFLAGS) $(INCLUDE) -c ImageData.cpp

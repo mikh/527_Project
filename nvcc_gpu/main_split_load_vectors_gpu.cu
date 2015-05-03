@@ -7,22 +7,9 @@
 #include <fstream>
 #include <cstring>
 #include <time.h>
-#include <math.h>
 
 //#include "ImageData.h"
-#include "NeuralNet.h"
-
-// Assertion to check for errors
-#define CUDA_SAFE_CALL(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true)
-{
-	if (code != cudaSuccess) 
-	{
-		fprintf(stderr,"CUDA_SAFE_CALL: %s %s %d\n", cudaGetErrorString(code), file, line);
-		if (abort) exit(code);
-	}
-}
-
+#include "NeuralNet.h.cpp"
 
 #define IMG_SIZE 6*6
 #define ALPHABET_SIZE 10
@@ -30,86 +17,43 @@ inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true)
 #define GIG 1000000000
 #define NANO_TO_MILLI 1000000
 #define CPG 2.53         // Cycles per GHz -- Adjust to your computer
-
 #define TILE_WIDTH                     16
 #define NUM_BLOCKS                     ARR_LENGTH/TILE_WIDTH
 #define PRINT_TIMER                    1
 #define TOL                            4e-7
-#define ARR_LENGTH                     2048
+#define ARR_LENGTH                     64
 
 using namespace std;
 
 void save_double_results(vector<double>* data, char* data_location);
 void load_double_results(vector<double>* data, char* data_location);
 
-__global__ void kernel_MMM_shared(float* d_A, float* d_B, float* d_result) {
-  __shared__ float ds_A[TILE_WIDTH][TILE_WIDTH];
-  __shared__ float ds_B[TILE_WIDTH][TILE_WIDTH];
-  
-  float sum = 0;
-  long int m,k;
-  
-  int row = blockIdx.y * TILE_WIDTH + threadIdx.y;
-  int col = blockIdx.x * TILE_WIDTH + threadIdx.x;
-
-  for(m = 0; m < ARR_LENGTH/TILE_WIDTH; ++m)
-  {
-   ds_A[threadIdx.y][threadIdx.x] = d_A[row*ARR_LENGTH + (m*TILE_WIDTH + threadIdx.x)];
-    ds_B[threadIdx.y][threadIdx.x] = d_B[col + (m*TILE_WIDTH + threadIdx.y)*ARR_LENGTH];
-   __syncthreads();
-
-    for (k = 0; k < TILE_WIDTH; ++k)
-      sum += ds_A[threadIdx.y][k] * ds_B[k][threadIdx.x];
-    __syncthreads();
-  }
-  
-  d_result[row*ARR_LENGTH+col] = sum;
-}
-
-
 int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   struct timespec diff(struct timespec start, struct timespec end);
   struct timespec time1, time2, elapsed_cpu;
-
-  // GPU Timing variables
-   cudaEvent_t start, stop;
-   float elapsed_gpu;
-   
-   // Arrays on GPU global memory
-   vector<double> *d_A;          //Copy of h_A on GPU
-   vector<double> *d_B;          //Copy of h_B on GPU
-   vector<double> *d_result;     //MMM result on GPU
    
    // Arrays on the host memory
-   vector<double> *h_A;             //Initial Matrix x
-   vector<double> *h_B;             //Initial Matrix y
-   vector<double> *h_result_gold;   //MMM result on CPU
-   vector<double> *h_result;        //Copy of MMM result from GPU (d_result)
-   
-   int i, j, errCount = 0;
-   printf("Size of the Matrix is = %d by %d\n", ARR_LENGTH,ARR_LENGTH);
-   
-   // Allocate GPU memory
-   size_t allocSize = ARR_LENGTH * ARR_LENGTH * sizeof(vector<double>);
-   CUDA_SAFE_CALL(cudaMalloc((void **)&d_A, allocSize));
-   CUDA_SAFE_CALL(cudaMalloc((void **)&d_B, allocSize));
-   CUDA_SAFE_CALL(cudaMalloc((void **)&d_result, allocSize));
-   cudaMemset(d_A, 0, allocSize);
-   cudaMemset(d_B, 0, allocSize);
-   cudaMemset(d_result, 0, allocSize);
+   double *h_A;             //Initial Matrix x
+   double *h_B;             //Initial Matrix y
+   double *h_result_gold;   //MMM result on CPU
+   double *h_result;        //Copy of MMM result from GPU (d_result)
    
    // Allocate arrays on host memory
-   h_A                = (vector<double> *) malloc(allocSize);
-   h_B                = (vector<double> *) malloc(allocSize);
-   h_result           = (vector<double> *) malloc(allocSize);
-   h_result_gold      = (vector<double> *) malloc(allocSize);
+   size_t allocSize = ARR_LENGTH * ARR_LENGTH * sizeof(double);
+   h_A                = (double *) malloc(allocSize);
+   h_B                = (double *) malloc(allocSize);
+   h_result           = (double *) malloc(allocSize);
+   h_result_gold      = (double *) malloc(allocSize);
    memset(h_A, 0, allocSize);
    memset(h_B, 0, allocSize);
    memset(h_result, 0, allocSize);
    memset(h_result_gold, 0, allocSize);
    
+   //int i, j, errCount = 0;
+   printf("Size of the Matrix is = %d by %d\n", ARR_LENGTH,ARR_LENGTH);
+   
   int correct = 0;
-  int target_size = 6;
+  //int target_size = 6;
   char file_string[100];
 
   vector<double>* inputs = new vector<double>(IMG_SIZE);
@@ -170,6 +114,11 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
 
   delete inputs;
   delete outputs;
+  free(h_A);
+  free(h_B);
+  free(h_result);
+  free(h_result_gold);
+  
   return correct;
 }
 
