@@ -17,11 +17,6 @@
 #define GIG 1000000000
 #define NANO_TO_MILLI 1000000
 #define CPG 2.53         // Cycles per GHz -- Adjust to your computer
-#define TILE_WIDTH                     16
-#define NUM_BLOCKS                     ARR_LENGTH/TILE_WIDTH
-#define PRINT_TIMER                    1
-#define TOL                            4e-7
-#define ARR_LENGTH                     64
 
 using namespace std;
 
@@ -31,26 +26,6 @@ void load_double_results(vector<double>* data, char* data_location);
 int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   struct timespec diff(struct timespec start, struct timespec end);
   struct timespec time1, time2, elapsed_cpu;
-   
-   // Arrays on the host memory
-   double *h_A;             //Initial Matrix x
-   double *h_B;             //Initial Matrix y
-   double *h_result_gold;   //MMM result on CPU
-   double *h_result;        //Copy of MMM result from GPU (d_result)
-   
-   // Allocate arrays on host memory
-   size_t allocSize = ARR_LENGTH * ARR_LENGTH * sizeof(double);
-   h_A                = (double *) malloc(allocSize);
-   h_B                = (double *) malloc(allocSize);
-   h_result           = (double *) malloc(allocSize);
-   h_result_gold      = (double *) malloc(allocSize);
-   memset(h_A, 0, allocSize);
-   memset(h_B, 0, allocSize);
-   memset(h_result, 0, allocSize);
-   memset(h_result_gold, 0, allocSize);
-   
-   //int i, j, errCount = 0;
-   printf("Size of the Matrix is = %d by %d\n", ARR_LENGTH,ARR_LENGTH);
    
   int correct = 0;
   //int target_size = 6;
@@ -85,7 +60,7 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
       load_double_results(inputs, file_string);
 
       outputs = new vector<double>(ALPHABET_SIZE);
-      nn.feedForward(inputs, outputs, bias);
+      nn.feedForward_gpu(inputs, outputs, bias);
 
       if (training) {
         double max_val = 0;
@@ -114,11 +89,6 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
 
   delete inputs;
   delete outputs;
-  free(h_A);
-  free(h_B);
-  free(h_result);
-  free(h_result_gold);
-  
   return correct;
 }
 

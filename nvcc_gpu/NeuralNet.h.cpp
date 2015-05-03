@@ -29,7 +29,12 @@ public:
   void feedForward(std::vector<double>* inputs,
                    std::vector<double>* outputLayer,
                    const double bias);
-
+				   
+  // Compute the outputs from a given set of inputs.
+  void feedForward_gpu(std::vector<double>* inputs,
+                   std::vector<double>* outputLayer,
+                   const double bias);
+				   
   // Back propagate the errors to update the weights.
   void backPropagate(std::vector<double>* outputs, int teacher);
 
