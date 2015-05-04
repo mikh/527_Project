@@ -18,18 +18,16 @@ inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true)
 
 #define TILE_WIDTH                     1
 #define NUM_BLOCKS                     ARR_LENGTH/TILE_WIDTH
-#define PRINT_TIMER                    0
+#define PRINT_TIMER                    1
 
 __global__ void kernel_MMM_global(float* d_A, float* d_B, float* d_result, int UNC) {
 
   float sum = 0;
-
   int row = blockIdx.y * blockDim.y + threadIdx.y;
-  int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   for(int k = 0; k < UNC; k++)
-	sum += d_B[row*UNC+k] * d_A[k];  
-  d_result[col] = sum; 
+	sum += d_A[k] * d_B[row*UNC+k];  
+  d_result[row] = sum; 
 
 }
 
@@ -96,13 +94,7 @@ void NeuralNet::feedForward(vector<float>* inputs,
 void NeuralNet::feedForward_gpu(vector<float>* inputs,
                             vector<float>* outputLayer,
                             const float bias) 
-{
-#if PRINT_TIMER
-   //GPU Timing variables
-   cudaEvent_t start, stop;
-   float elapsed_gpu;
-#endif
-  
+{ 
    // Arrays on the host memory
    float *h_up;             //Initial Upstream Vector
    float *h_curr;           //Initial Current Stream Matrix
@@ -121,7 +113,7 @@ void NeuralNet::feedForward_gpu(vector<float>* inputs,
 
    for (int i = 0; i < inputLayer->neuronCount(); i++) {
       inputLayer->getNeuron(i)->setValue((*inputs)[i]);
-	  h_result[i] = (float) (inputLayer->getNeuron(i)->getValue())/8;
+	  //h_result[i] = (float) (inputLayer->getNeuron(i)->getValue())/8;
    }
    for (int l = 1; l < numHiddenLayers + 2; l++) 
    {
@@ -137,9 +129,10 @@ void NeuralNet::feedForward_gpu(vector<float>* inputs,
 	  h_up                = (float *) malloc(allocSizeV);
 	  memset(h_up, 0, allocSizeV);
 	  for (int m = 0; m < UNC; m++){
-	     h_up[m] = h_result[m];
+	     h_up[m] = upstream->getNeuron(m)->getValue();
+		 //printf("hresult = %f\n",h_result[m]); 
 	  }
-	  
+
 	  //Initialize current stream
 	  size_t allocSizeM = CNC * UNC * sizeof(float);
 	  h_curr              = (float *) malloc(allocSizeM);
@@ -164,28 +157,11 @@ void NeuralNet::feedForward_gpu(vector<float>* inputs,
       CUDA_SAFE_CALL(cudaMemcpy(d_up, h_up, allocSizeV, cudaMemcpyHostToDevice));
 	  CUDA_SAFE_CALL(cudaMemcpy(d_curr, h_curr, allocSizeM, cudaMemcpyHostToDevice));
       
-#if PRINT_TIMER
-   // Create the cuda events
-   cudaEventCreate(&start);
-   cudaEventCreate(&stop);
-   // Record event on the default stream
-   cudaEventRecord(start, 0);
-#endif
+	   // Launch the kernel
+	   dim3 dimGrid(4,6);
+       dim3 dimBlock(16,6);
+	   kernel_MMM_global<<<dimGrid, dimBlock>>>(d_up, d_curr, d_result, UNC);
 
-	// Launch the kernel
-	dim3 dimGrid(64,36);
-    dim3 dimBlock(1,1);
-	kernel_MMM_global<<<dimGrid, dimBlock>>>(d_up, d_curr, d_result, UNC);
-
-#if PRINT_TIMER
-   // Stop and destroy the timer
-   cudaEventRecord(stop, 0);
-   cudaEventSynchronize(stop);
-   cudaEventElapsedTime(&elapsed_gpu,start, stop);
-   printf("\nGPU time: %f (msec)\n", elapsed_gpu);
-   cudaEventDestroy(start);
-   cudaEventDestroy(stop);
-#endif
       // Check for errors during launch
 	  CUDA_SAFE_CALL(cudaPeekAtLastError());
 	  
@@ -196,30 +172,35 @@ void NeuralNet::feedForward_gpu(vector<float>* inputs,
       // Transfer the results back to the host
       CUDA_SAFE_CALL(cudaMemcpy(h_result, d_result, allocSizeV, cudaMemcpyDeviceToHost));
      
-/*	 
-	 for (int j = 0; j < CNC; j++) 
-	 {
-        Neuron *n = curr->getNeuron(j);
-        n->setActivation(h_result[j]);
-        n->setValue(sigmoid(h_result[j]));
-     }
-*/	   
-	//printf("hello2\n");  
+	 
+	  for (int j = 0; j < CNC; j++) 
+	  {
+         Neuron *n = curr->getNeuron(j);
+         n->setActivation(h_result[j]);
+         n->setValue(sigmoid(h_result[j]));
+      }
+	   
 	//##########################################################
-
+/*
       for (int j = 0; j < curr->neuronCount(); j++) 
 	  {
          Neuron *n = curr->getNeuron(j);
          float sum = 0;
+		 float summa = 0;
          for (int i = 0; i < upstream->neuronCount(); i++) {
             sum += n->getWeight(i) * upstream->getNeuron(i)->getValue();
+			summa += h_up[i] * h_curr[j*UNC+i];
+			//printf("weight = %f, ", n->getWeight(i));
+			//printf("getValue = %f\n", upstream->getNeuron(i)->getValue());
          }
-	   //printf("sum = %f, ", sum);
-	   //printf("hsum = %f\n", h_result[j]);
+	   
+	   printf("sum = %f, ", sum);
+	   printf("summa = %f ", summa);
+	   printf("hsum = %f\n", h_result[j]);
        n->setActivation(sum);
        n->setValue(sigmoid(sum));
        }
-
+*/
     }
 
     Layer* lastLayer = (*layers)[numHiddenLayers+1];

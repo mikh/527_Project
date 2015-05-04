@@ -25,7 +25,7 @@ void load_float_results(vector<float>* data, char* data_location);
 
 int process_ocr(bool training, NeuralNet& nn, float bias, int iterations) {
   struct timespec diff(struct timespec start, struct timespec end);
-  struct timespec time1, time2, elapsed_cpu;
+  struct timespec time1, time2, gputime1, gputime2, elapsed_cpu, elapsed_gpu;
    
   int correct = 0;
   //int target_size = 6;
@@ -60,8 +60,12 @@ int process_ocr(bool training, NeuralNet& nn, float bias, int iterations) {
       load_float_results(inputs, file_string);
 
       outputs = new vector<float>(ALPHABET_SIZE);
+	  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &gputime1);
       nn.feedForward_gpu(inputs, outputs, bias);
-
+      clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &gputime2);
+	  elapsed_gpu = diff(gputime1, gputime2);
+      printf("\nGPU time: %f(msec)\n", (float)(((float)GIG*elapsed_gpu.tv_sec + elapsed_gpu.tv_nsec)/(float)NANO_TO_MILLI));
+	  
       if (training) {
         float max_val = 0;
         int max_index = 0;
@@ -84,7 +88,7 @@ int process_ocr(bool training, NeuralNet& nn, float bias, int iterations) {
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
   elapsed_cpu = diff(time1, time2);
 
-  printf("\nCPU time: %f(msec)\n", (float)(((float)GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(float)NANO_TO_MILLI));
+  printf("\nTotal time: %f(msec)\n", (float)(((float)GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(float)NANO_TO_MILLI));
 
 
   delete inputs;
