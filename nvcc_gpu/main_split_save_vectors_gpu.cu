@@ -25,16 +25,16 @@ inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true_
 
 using namespace std;
 
-void save_double_results(vector<double>* data, char* data_location);
-void load_double_results(vector<double>* data, char* data_location);
+void save_float_results(vector<float>* data, char* data_location);
+void load_float_results(vector<float>* data, char* data_location);
 
-int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
+int process_ocr(bool training, NeuralNet& nn, float bias, int iterations) {
   int correct = 0;
   int target_size = 6;
   char file_string[100];
 
-  vector<double>* inputs = new vector<double>(IMG_SIZE);
-  vector<double>* outputs = new vector<double>(ALPHABET_SIZE);
+  vector<float>* inputs = new vector<float>(IMG_SIZE);
+  vector<float>* outputs = new vector<float>(ALPHABET_SIZE);
 
   for (int j = 0; j < iterations; j++) {
     for (int i = 0; i < ALPHABET_SIZE; i++) {
@@ -50,17 +50,17 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
       input.getPixels(inputs);
 
       sprintf(file_string, "data_text/%d/data_%d_%d.txt", i, i, j);
-      save_double_results(inputs, file_string);
-      outputs = new vector<double>(ALPHABET_SIZE);
+      save_float_results(inputs, file_string);
+      outputs = new vector<float>(ALPHABET_SIZE);
 
       /*
-      load_double_results(inputs, string(file_string));
+      load_float_results(inputs, string(file_string));
 
       
       nn.feedForward(inputs, outputs, bias);
 
       if (training) {
-        double max_val = 0;
+        float max_val = 0;
         int max_index = 0;
         for (int k = 0; k < outputs->size(); k++) {
           if ((*outputs)[k] > max_val) {
@@ -85,12 +85,12 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
 
 void process_and() {
   NeuralNet nn(2, 2, 1, 6, 1, .57);
-  vector<double>* inputs = new vector<double>(2);
-  vector<double>* outputs = new vector<double>(2);
+  vector<float>* inputs = new vector<float>(2);
+  vector<float>* outputs = new vector<float>(2);
   int correct = 0;
 
   for (int i = 0; i < 10000; i++) {
-    double a, b, t;
+    float a, b, t;
     (*inputs)[0] = (rand() % 2 == 1) ? 1.0 : 0.0;
     (*inputs)[1] = (rand() % 2 == 1) ? 1.0 : 0.0;
     t = (a == 1.0 && b == 1.0) ? 1.0 : 0.0;
@@ -103,7 +103,7 @@ void process_and() {
   cout << "INPUT\tINPUT\tOUTPUT\tOUTPUT\n";
 
   for (int i = 0; i < 100; i++) {
-    double a, b, t;
+    float a, b, t;
     (*inputs)[0] = (rand() % 2 == 1) ? 1.0 : 0.0;
     (*inputs)[1] = (rand() % 2 == 1) ? 1.0 : 0.0;
     t = (a == 1.0 && b == 1.0) ? 1.0 : 0.0;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
   srand((unsigned)time(NULL));
 
   int training = 0, layers = 2, testing = 0;
-  double bias = 0, responseThreshold = 1, learningRate = 1;
+  float bias = 0, responseThreshold = 1, learningRate = 1;
   int layerHeight = 10;
 
   // argc is 1 if the command line was given the name of the binary
@@ -182,13 +182,13 @@ int main(int argc, char *argv[]) {
   int correct = process_ocr(true, nn, bias, testing);
 
   cout << "Success: " << correct << " / " << testing * 10
-       << " (" << ((double)correct / (double)testing * 10) << "%)\n";
+       << " (" << ((float)correct / (float)testing * 10) << "%)\n";
 
   return 0;
 }
 
 
-void save_double_results(vector<double>* data, char* data_location){
+void save_float_results(vector<float>* data, char* data_location){
   FILE *pFile;
   pFile = fopen(data_location, "w");
     for(int ii = 0; ii < data->size(); ii++){
@@ -197,7 +197,7 @@ void save_double_results(vector<double>* data, char* data_location){
   fclose(pFile);
 }
 
-void load_double_results(vector<double>* data, char* data_location){
+void load_float_results(vector<float>* data, char* data_location){
   data->clear();
   ifstream file;
   file.open(data_location);

@@ -7,42 +7,42 @@ private:
   int numOutputs;
   int numHiddenLayers;
   int numNeuronsPerLayer;
-  double learningRate;
-  double responseThreshold;
+  float learningRate;
+  float responseThreshold;
 
   std::vector<Layer*>* layers;
-  double* outputLayer;
+  float* outputLayer;
 
 public:
   NeuralNet(int inputs,
             int outputs,
             int hiddenLayers,
             int neuronsPerLayer,
-            double alpha,
-            double threshold);
+            float alpha,
+            float threshold);
 
   ~NeuralNet();
 
-  double* getWeights() const;
+  float* getWeights() const;
 
   // Compute the outputs from a given set of inputs.
-  void feedForward(std::vector<double>* inputs,
-                   std::vector<double>* outputLayer,
-                   const double bias);
+  void feedForward(std::vector<float>* inputs,
+                   std::vector<float>* outputLayer,
+                   const float bias);
 				   
   // Compute the outputs from a given set of inputs.
-  void feedForward_gpu(std::vector<double>* inputs,
-                   std::vector<double>* outputLayer,
-                   const double bias);
+  void feedForward_gpu(std::vector<float>* inputs,
+                   std::vector<float>* outputLayer,
+                   const float bias);
 				   
   // Back propagate the errors to update the weights.
-  void backPropagate(std::vector<double>* outputs, int teacher);
+  void backPropagate(std::vector<float>* outputs, int teacher);
 
   // Sigmoid response function.
-  inline double sigmoid(double activation);
+  inline float sigmoid(float activation);
 
   // Derivative of sigmoid response function.
-  inline double sigmoidPrime(double activation);
+  inline float sigmoidPrime(float activation);
 
   void print() {
     for (int i = 1; i < layers->size(); i++) {

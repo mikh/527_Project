@@ -39,8 +39,8 @@ NeuralNet::NeuralNet(int inputs,
                      int outputs,
                      int hiddenLayers,
                      int neuronsPerLayer,
-                     double alpha,
-                     double threshold) {
+                     float alpha,
+                     float threshold) {
   numInputs = inputs;
   numOutputs = outputs;
   numHiddenLayers = hiddenLayers;
@@ -66,9 +66,9 @@ NeuralNet::~NeuralNet() {
 }
 
 // Compute the outputs from a given set of inputs.
-void NeuralNet::feedForward(vector<double>* inputs,
-                            vector<double>* outputLayer,
-                            const double bias) {
+void NeuralNet::feedForward(vector<float>* inputs,
+                            vector<float>* outputLayer,
+                            const float bias) {
   Layer* inputLayer = (*layers)[0];
   for (int i = 0; i < inputLayer->neuronCount(); i++) {
     inputLayer->getNeuron(i)->setValue((*inputs)[i]);
@@ -77,7 +77,7 @@ void NeuralNet::feedForward(vector<double>* inputs,
     Layer *curr = (*layers)[l], *upstream = (*layers)[l-1];
     for (int j = 0; j < curr->neuronCount(); j++) {
       Neuron *n = curr->getNeuron(j);
-      double sum = 0;
+      float sum = 0;
       for (int i = 0; i < upstream->neuronCount(); i++) {
         sum += n->getWeight(i) * upstream->getNeuron(i)->getValue();
       }
@@ -93,9 +93,9 @@ void NeuralNet::feedForward(vector<double>* inputs,
 }
 
 // Compute the outputs from a given set of inputs.
-void NeuralNet::feedForward_gpu(vector<double>* inputs,
-                            vector<double>* outputLayer,
-                            const double bias) 
+void NeuralNet::feedForward_gpu(vector<float>* inputs,
+                            vector<float>* outputLayer,
+                            const float bias) 
 {
 #if PRINT_TIMER
    //GPU Timing variables
@@ -109,9 +109,9 @@ void NeuralNet::feedForward_gpu(vector<double>* inputs,
    float *h_result;         //Copy of MMM result from GPU (d_result)
    
    // Arrays on GPU global memory
-   float *d_up;          //Copy of h_A on GPU
-   float *d_curr;        //Copy of h_B on GPU
-   float *d_result;      //MMM result on GPU   
+   float *d_up;             //Copy of h_A on GPU
+   float *d_curr;           //Copy of h_B on GPU
+   float *d_result;         //MMM result on GPU   
    
    Layer* inputLayer = (*layers)[0];
   
@@ -121,7 +121,7 @@ void NeuralNet::feedForward_gpu(vector<double>* inputs,
 
    for (int i = 0; i < inputLayer->neuronCount(); i++) {
       inputLayer->getNeuron(i)->setValue((*inputs)[i]);
-	  h_result[i] = (float) (inputLayer->getNeuron(i)->getValue());
+	  h_result[i] = (float) (inputLayer->getNeuron(i)->getValue())/8;
    }
    for (int l = 1; l < numHiddenLayers + 2; l++) 
    {
@@ -133,10 +133,10 @@ void NeuralNet::feedForward_gpu(vector<double>* inputs,
 	  //printf("UNC = %i\n", UNC);
 	  
 	  //Initialize upstream
-	  size_t allocSizeV = CNC * sizeof(float);
+	  size_t allocSizeV = UNC * sizeof(float);
 	  h_up                = (float *) malloc(allocSizeV);
 	  memset(h_up, 0, allocSizeV);
-	  for (int m = 0; m < CNC; m++){
+	  for (int m = 0; m < UNC; m++){
 	     h_up[m] = h_result[m];
 	  }
 	  
@@ -173,7 +173,7 @@ void NeuralNet::feedForward_gpu(vector<double>* inputs,
 #endif
 
 	// Launch the kernel
-	dim3 dimGrid(36,64);
+	dim3 dimGrid(64,36);
     dim3 dimBlock(1,1);
 	kernel_MMM_global<<<dimGrid, dimBlock>>>(d_up, d_curr, d_result, UNC);
 
@@ -210,11 +210,12 @@ void NeuralNet::feedForward_gpu(vector<double>* inputs,
       for (int j = 0; j < curr->neuronCount(); j++) 
 	  {
          Neuron *n = curr->getNeuron(j);
-         double sum = 0;
+         float sum = 0;
          for (int i = 0; i < upstream->neuronCount(); i++) {
             sum += n->getWeight(i) * upstream->getNeuron(i)->getValue();
          }
-	   printf("sum = %f, hsum = %f\n", sum, h_result[j]);
+	   //printf("sum = %f, ", sum);
+	   //printf("hsum = %f\n", h_result[j]);
        n->setActivation(sum);
        n->setValue(sigmoid(sum));
        }
@@ -239,11 +240,11 @@ void NeuralNet::feedForward_gpu(vector<double>* inputs,
 }
 
 // Back propagate the errors to update the weights.
-void NeuralNet::backPropagate(vector<double>* outputs, int teacher) {
+void NeuralNet::backPropagate(vector<float>* outputs, int teacher) {
   Layer *outputLayer = (*layers)[numHiddenLayers + 1];
   for (int i = 0; i < outputs->size(); i++) {
     Neuron *n = outputLayer->getNeuron(i);
-    double adjusted = -n->getValue();
+    float adjusted = -n->getValue();
     if (i == teacher) {
       adjusted += 1;
     }
@@ -255,7 +256,7 @@ void NeuralNet::backPropagate(vector<double>* outputs, int teacher) {
     Layer *curr = (*layers)[l], *downstream = (*layers)[l+1];
 
     for (int i = 0; i < curr->neuronCount(); i++) {
-      double sum = 0;
+      float sum = 0;
       Neuron *n = curr->getNeuron(i);
       for (int j = 0; j < downstream->neuronCount(); j++) {
         sum += downstream->getNeuron(j)->getWeight(i)
@@ -272,12 +273,12 @@ void NeuralNet::backPropagate(vector<double>* outputs, int teacher) {
 }
 
 // Compute the sigmoid function.
-inline double NeuralNet::sigmoid(double activation) {
+inline float NeuralNet::sigmoid(float activation) {
   return 1.0 / (1.0 + exp(-activation / responseThreshold));
 }
 
 // Compute the derivative of the sigmoid function
-inline double NeuralNet::sigmoidPrime(double activation) {
-  double exponential = exp(activation / responseThreshold);
+inline float NeuralNet::sigmoidPrime(float activation) {
+  float exponential = exp(activation / responseThreshold);
   return exponential / (responseThreshold * pow(exponential + 1, 2));
 }

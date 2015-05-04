@@ -20,10 +20,10 @@
 
 using namespace std;
 
-void save_double_results(vector<double>* data, char* data_location);
-void load_double_results(vector<double>* data, char* data_location);
+void save_float_results(vector<float>* data, char* data_location);
+void load_float_results(vector<float>* data, char* data_location);
 
-int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
+int process_ocr(bool training, NeuralNet& nn, float bias, int iterations) {
   struct timespec diff(struct timespec start, struct timespec end);
   struct timespec time1, time2, elapsed_cpu;
    
@@ -31,8 +31,8 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   //int target_size = 6;
   char file_string[100];
 
-  vector<double>* inputs = new vector<double>(IMG_SIZE);
-  vector<double>* outputs = new vector<double>(ALPHABET_SIZE);
+  vector<float>* inputs = new vector<float>(IMG_SIZE);
+  vector<float>* outputs = new vector<float>(ALPHABET_SIZE);
 
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
@@ -54,16 +54,16 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
       */
 
       sprintf(file_string, "data_text/%d/data_%d_%d.txt", i, i, j);
-   //   save_double_results(inputs, string(file_string));
+   //   save_float_results(inputs, string(file_string));
 
       
-      load_double_results(inputs, file_string);
+      load_float_results(inputs, file_string);
 
-      outputs = new vector<double>(ALPHABET_SIZE);
+      outputs = new vector<float>(ALPHABET_SIZE);
       nn.feedForward_gpu(inputs, outputs, bias);
 
       if (training) {
-        double max_val = 0;
+        float max_val = 0;
         int max_index = 0;
         for (int k = 0; k < outputs->size(); k++) {
           if ((*outputs)[k] > max_val) {
@@ -84,7 +84,7 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
   elapsed_cpu = diff(time1, time2);
 
-  printf("\nCPU time: %f(msec)\n", (float)(((double)GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(double)NANO_TO_MILLI));
+  printf("\nCPU time: %f(msec)\n", (float)(((float)GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(float)NANO_TO_MILLI));
 
 
   delete inputs;
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
   srand((unsigned)time(NULL));
 
   int training = 0, layers = 2, testing = 0;
-  double bias = 0, responseThreshold = 1, learningRate = 1;
+  float bias = 0, responseThreshold = 1, learningRate = 1;
   int layerHeight = 10;
 
   // argc is 1 if the command line was given the name of the binary
@@ -149,13 +149,13 @@ int main(int argc, char *argv[]) {
   int correct = process_ocr(true, nn, bias, testing);
 
   cout << "Success: " << correct << " / " << testing * 10
-       << " (" << ((double)correct / (double)testing * 10) << "%)\n";
+       << " (" << ((float)correct / (float)testing * 10) << "%)\n";
 
   return 0;
 }
 
 
-void save_double_results(vector<double>* data, char* data_location){
+void save_float_results(vector<float>* data, char* data_location){
   FILE *pFile;
   pFile = fopen(data_location, "w");
     for(int ii = 0; ii < data->size(); ii++){
@@ -164,7 +164,7 @@ void save_double_results(vector<double>* data, char* data_location){
   fclose(pFile);
 }
 
-void load_double_results(vector<double>* data, char* data_location){
+void load_float_results(vector<float>* data, char* data_location){
   data->clear();
   ifstream file;
   file.open(data_location);

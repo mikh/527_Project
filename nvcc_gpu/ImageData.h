@@ -31,7 +31,7 @@ public:
   // Get the width and height and vector of pixels of the image.
   int getWidth() const;
   int getHeight() const;
-  void getPixels(std::vector<double> *v) const;
+  void getPixels(std::vector<float> *v) const;
 
   // Report whether an error occurred reading the image.
   bool error() const;
