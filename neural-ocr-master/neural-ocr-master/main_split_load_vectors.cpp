@@ -92,8 +92,8 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
     }
   }
 
-  printf("\nFeed-Forward time: %.2f(msec)\n", (float)(ff_time/(iterations*ALPHABET_SIZE));
-    printf("Back-Propogate time: %.2f(msec)\n", (float)(bp_time/(iterations*ALPHABET_SIZE));
+  printf("\nFeed-Forward time: %.2f(msec)\n", (float)(ff_time/(iterations*ALPHABET_SIZE)));
+    printf("Back-Propogate time: %.2f(msec)\n", (float)(bp_time/(iterations*ALPHABET_SIZE)));
 
 
   delete inputs;
