@@ -27,6 +27,8 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   struct timespec diff(struct timespec start, struct timespec end);
   struct timespec time1, time2, elapsed_cpu;
 
+  double ff_time = 0, bp_time = 0;
+
   int correct = 0;
   int target_size = 6;
   char file_string[100];
@@ -35,7 +37,6 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   vector<double>* outputs = new vector<double>(ALPHABET_SIZE);
 
   printf("running process_ocr");
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
 
   for (int j = 0; j < iterations; j++) {
@@ -61,7 +62,12 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
       load_double_results(inputs, file_string);
 
       outputs = new vector<double>(ALPHABET_SIZE);
+      clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
       nn.feedForward(inputs, outputs, bias);
+      clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+      elapsed_cpu = diff(time1, time2);
+      ff_time += ((double)(GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(double)NANO_TO_MILLI);
+
 
       if (training) {
         double max_val = 0;
@@ -76,16 +82,18 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
           correct++;
         }
       } else {
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
         nn.backPropagate(outputs, i);
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+       elapsed_cpu = diff(time1, time2);
+        bp_time += ((double)(GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(double)NANO_TO_MILLI);
       }
       
     }
   }
 
-  clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-  elapsed_cpu = diff(time1, time2);
-
-  printf("\nCPU time: %f(msec)\n", (float)(((double)GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(double)NANO_TO_MILLI));
+  printf("\nFeed-Forward time: %.2f(msec)\n", (float)(ff_time/(iterations*ALPHABET_SIZE));
+    printf("Back-Propogate time: %.2f(msec)\n", (float)(bp_time/(iterations*ALPHABET_SIZE));
 
 
   delete inputs;
