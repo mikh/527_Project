@@ -20,7 +20,7 @@ neural_read_single_core: main_split_load_vectors.o NeuralNet_single_core.o
 	$(CC) $(CFLAGS) -o neural_read_single_core main_split_load_vectors.o NeuralNet_single_core.o -lrt
 
 neural_read_multi_core_openmp: main_split_load_vectors.o NeuralNet_multi_core_openmp.o
-	$(CC) $(CFLAGS) -o neural_read_multi_core_openmp main_split_load_vectors.o NeuralNet_multi_core_openmp.o -lrt
+	$(CC) $(CFLAGS) -o neural_read_multi_core_openmp main_split_load_vectors.o NeuralNet_multi_core_openmp.o -lrt -fopenmp
 
 neural_read_multi_core_pthreads: main_split_load_vectors.o NeuralNet_multi_core_pthreads.o
 	$(CC) $(CFLAGS) -o neural_read_multi_core_pthreads main_split_load_vectors.o NeuralNet_multi_core_pthreads.o -lrt
@@ -38,7 +38,7 @@ NeuralNet_single_core.o: Neuron.h Layer.h NeuralNet_single_core.cpp NeuralNet.h
 	$(CC) $(CFLAGS) -c Neuron.h NeuralNet_single_core.cpp
 
 NeuralNet_multi_core_openmp.o: Neuron.h Layer.h NeuralNet_multi_core_openmp.cpp NeuralNet.h
-	$(CC) $(CFLAGS) -c Neuron.h NeuralNet_multi_core_openmp.cpp
+	$(CC) $(CFLAGS) -c Neuron.h NeuralNet_multi_core_openmp.cpp -fopenmp
 
 NeuralNet_multi_core_pthreads.o: Neuron.h Layer.h NeuralNet_multi_core_pthreads.cpp NeuralNet.h
 	$(CC) $(CFLAGS) -c Neuron.h NeuralNet_multi_core_pthreads.cpp

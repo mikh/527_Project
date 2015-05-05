@@ -1,49 +1,44 @@
-Tue May 5 01:22:54 EDT 2015
+Tue May 5 11:54:39 PDT 2015
 
 Base Case
 Training with 100 images
 
-Feed-Forward time: 62.98(usecs)
-Back-Propogate time: 355.96(usecs)
+Feed-Forward time: 32.62(usecs)
+Back-Propogate time: 236.78(usecs)
 Testing with 100 images
 
-Feed-Forward time: 61.53(usecs)
+Feed-Forward time: 33.68(usecs)
 Back-Propogate time: 0.00(usecs)
 
 
 Single Core Case
 Training with 100 images
 
-Feed-Forward time: 53.79(usecs)
-Back-Propogate time: 358.58(usecs)
+Feed-Forward time: 23.79(usecs)
+Back-Propogate time: 215.35(usecs)
 Testing with 100 images
 
-Feed-Forward time: 51.98(usecs)
+Feed-Forward time: 24.14(usecs)
 Back-Propogate time: 0.00(usecs)
 
 
 Multi Core OpenMP Case
 Training with 100 images
 
-Feed-Forward time: 62.89(usecs)
-Back-Propogate time: 356.24(usecs)
-Testing with 100 images
-
-Feed-Forward time: 60.37(usecs)
-Back-Propogate time: 0.00(usecs)
-
 
 Multi Core Pthreads Case
 Training with 100 images
 
-Feed-Forward time: 64.19(usecs)
-Back-Propogate time: 359.24(usecs)
+Feed-Forward time: 23.75(usecs)
+Back-Propogate time: 213.61(usecs)
 Testing with 100 images
 
-Feed-Forward time: 65.98(usecs)
+Feed-Forward time: 24.55(usecs)
 Back-Propogate time: 0.00(usecs)
 
 
-Single Core = 117.717689326%(FF) 99.2693401751%(BP)
-OpenMP = 101.014116502%(FF) 99.9214013025%(BP)
-Pthreads = 95.6518399017%(FF) 99.0869613629%(BP)
+
+Speedup Rating:
+
+Single Core = 138.326726476%(FF) 109.951242164%(BP)
+OpenMP = 137.267080745%(FF) 110.846870465%(BP)

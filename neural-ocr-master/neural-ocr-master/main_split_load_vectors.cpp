@@ -224,7 +224,10 @@ int main(int argc, char *argv[]) {
   int correct = process_ocr(true, nn, bias, testing);
 
   cout << "Success: " << correct << " / " << testing * 10
-       << " (" << ((double)correct / (double)testing * 10) << "%)\n";
+       << " (" << ((double)correct / (double)testing * 10) << "%%)\n";
+  f = fopen("success_file.txt", "a");
+  fprintf(f, "%f%%\n", ((double)correct / (double)testing * 10));
+  fclose(f);
 
   return 0;
 }

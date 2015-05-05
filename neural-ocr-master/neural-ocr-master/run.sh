@@ -3,6 +3,7 @@ make all
 rm output_file.txt
 rm ff_file.txt
 rm bp_file.txt
+rm success_file.txt
 echo `date` > output_file.txt
 echo "" >> output_file.txt
 echo "Base Case" >> output_file.txt
