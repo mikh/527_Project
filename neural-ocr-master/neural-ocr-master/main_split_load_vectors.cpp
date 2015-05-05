@@ -16,6 +16,7 @@
 
 #define GIG 1000000000
 #define NANO_TO_MILLI 1000000
+#define NANO_TO_MICRO 1000
 #define CPG 2.53         // Cycles per GHz -- Adjust to your computer
 
 using namespace std;
@@ -26,6 +27,8 @@ void load_double_results(vector<double>* data, char* data_location);
 int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   struct timespec diff(struct timespec start, struct timespec end);
   struct timespec time1, time2, elapsed_cpu;
+
+  FILE *f;
 
   double ff_time = 0, bp_time = 0;
 
@@ -66,7 +69,7 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
       nn.feedForward(inputs, outputs, bias);
       clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
       elapsed_cpu = diff(time1, time2);
-      ff_time += ((double)(GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(double)NANO_TO_MILLI);
+      ff_time += ((double)(GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(double)NANO_TO_MICRO);
 
 
       if (training) {
@@ -86,14 +89,27 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
         nn.backPropagate(outputs, i);
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
        elapsed_cpu = diff(time1, time2);
-        bp_time += ((double)(GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(double)NANO_TO_MILLI);
+        bp_time += ((double)(GIG*elapsed_cpu.tv_sec + elapsed_cpu.tv_nsec)/(double)NANO_TO_MICRO);
       }
       
     }
   }
 
-  printf("\nFeed-Forward time: %.2f(msec)\n", (float)(ff_time/(iterations*ALPHABET_SIZE)));
-    printf("Back-Propogate time: %.2f(msec)\n", (float)(bp_time/(iterations*ALPHABET_SIZE)));
+    printf("\nFeed-Forward time: %.2f(usecs)\n", (float)(ff_time/(iterations*ALPHABET_SIZE)));
+    printf("Back-Propogate time: %.2f(usecs)\n", (float)(bp_time/(iterations*ALPHABET_SIZE)));
+
+    f = fopen("output_file.txt", "a");
+    fprintf(f, "\nFeed-Forward time: %.2f(usecs)\n", (float)(ff_time/(iterations*ALPHABET_SIZE)));
+    fprintf(f, "Back-Propogate time: %.2f(usecs)\n", (float)(bp_time/(iterations*ALPHABET_SIZE)));
+    fclose(f);
+
+    f = fopen("ff_file.txt", "a");
+    fprintf(f, "%.2f\n", (float)(ff_time/(iterations*ALPHABET_SIZE)));
+    fclose(f);
+    f = fopen("bp_file.txt", "a");
+    fprintf(f, "%.2f\n", (float)(bp_time/(iterations*ALPHABET_SIZE)));
+    fclose(f);
+
 
 
   delete inputs;
@@ -144,6 +160,7 @@ void process_and() {
 }
 
 int main(int argc, char *argv[]) {
+  FILE *f;
   srand((unsigned)time(NULL));
 
   int training = 0, layers = 2, testing = 0;
@@ -196,7 +213,14 @@ int main(int argc, char *argv[]) {
                learningRate,
                responseThreshold);
 
+  f = fopen("output_file.txt", "a");
+  fprintf(f, "Training with %d images\n", testing);
+  fclose(f);
   process_ocr(false, nn, bias, training);
+
+  f = fopen("output_file.txt", "a");
+  fprintf(f, "Testing with %d images\n", testing);
+  fclose(f);
   int correct = process_ocr(true, nn, bias, testing);
 
   cout << "Success: " << correct << " / " << testing * 10
