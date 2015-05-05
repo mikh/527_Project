@@ -64,7 +64,7 @@ int process_ocr(bool training, NeuralNet& nn, float bias, int iterations) {
       nn.feedForward_gpu(inputs, outputs, bias);
       clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &gputime2);
 	  elapsed_gpu = diff(gputime1, gputime2);
-      printf("\nGPU time: %f(msec)\n", (float)(((float)GIG*elapsed_gpu.tv_sec + elapsed_gpu.tv_nsec)/(float)NANO_TO_MILLI));
+      //printf("\nGPU time: %f(msec)\n", (float)(((float)GIG*elapsed_gpu.tv_sec + elapsed_gpu.tv_nsec)/(float)NANO_TO_MILLI));
 	  
       if (training) {
         float max_val = 0;
@@ -79,7 +79,7 @@ int process_ocr(bool training, NeuralNet& nn, float bias, int iterations) {
           correct++;
         }
       } else {
-        nn.backPropagate(outputs, i);
+        nn.backPropagate_gpu(outputs, i);
       }
       
     }

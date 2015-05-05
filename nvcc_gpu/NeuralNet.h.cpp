@@ -37,6 +37,9 @@ public:
 				   
   // Back propagate the errors to update the weights.
   void backPropagate(std::vector<float>* outputs, int teacher);
+  
+  // Back propagate the errors to update the weights.
+  void backPropagate_gpu(std::vector<float>* outputs, int teacher);
 
   // Sigmoid response function.
   inline float sigmoid(float activation);
