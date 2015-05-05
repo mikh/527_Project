@@ -14,7 +14,7 @@ neural_write: main_split_save_vectors.o NeuralNet.o ImageData.o
 	$(CC) $(CFLAGS) -o neural_write main_split_save_vectors.o NeuralNet.o ImageData.o $(LDFLAGS)
 
 neural_read: main_split_load_vectors.o NeuralNet.o
-	$(CC) $(CFLAGS) -o neural_read main_split_load_vectors.o NeuralNet.o
+	$(CC) $(CFLAGS) -o neural_read main_split_load_vectors.o NeuralNet.o -lrt
 
 main_split_save_vectors.o: main_split_save_vectors.cpp
 	$(CC) $(CFLAGS) $(INCLUDE) -c main_split_save_vectors.cpp

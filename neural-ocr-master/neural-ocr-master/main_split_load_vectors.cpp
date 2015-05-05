@@ -34,6 +34,7 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   vector<double>* inputs = new vector<double>(IMG_SIZE);
   vector<double>* outputs = new vector<double>(ALPHABET_SIZE);
 
+  printf("running process_ocr");
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
 
