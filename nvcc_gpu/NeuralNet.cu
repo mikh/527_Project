@@ -16,18 +16,70 @@ inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true)
 	}
 }
 
-#define TILE_WIDTH                     1
-#define NUM_BLOCKS                     ARR_LENGTH/TILE_WIDTH
+#define TILE_WIDTH                     16
+#define BLOCK_SIZE                     16
 #define PRINT_TIMER                    1
 
 __global__ void kernel_VMM_global(float* d_A, float* d_B, float* d_result, int UNC) {
 
   float sum = 0;
   int row = blockIdx.y * blockDim.y + threadIdx.y;
-
+  
+  #pragma unroll
   for(int k = 0; k < UNC; k++)
 	sum += d_A[k] * d_B[row*UNC+k];  
   d_result[row] = sum; 
+
+}
+
+/*
+__global__ void kernel_VMM_shared(float* d_A, float* d_B, float* d_result, int UNC, int CNC) {
+  __shared__ float ds_B[TILE_WIDTH];
+  float sum = 0;
+  int col = blockIdx.x * TILE_WIDTH + threadIdx.x;
+
+  #pragma unroll
+  for(int m = 0; m < UNC/TILE_WIDTH; ++m)
+  {
+    ds_B[threadIdx.x] = d_B[threadIdx.x + m*TILE_WIDTH];	
+	__syncthreads();
+   
+    for (int k = 0; k < TILE_WIDTH; ++k)
+      sum += d_A[k] * ds_B[col + (k + TILE_WIDTH*m)*CNC];
+    __syncthreads();
+  }
+  
+  d_result[col] = sum;
+}
+*/
+
+__global__ void kernel_VMM_shared(float* dx, float* dA, float* dy, const unsigned int nRows, const unsigned int nCols)
+{
+    const unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    __shared__ float x_shared[BLOCK_SIZE];
+
+    float y_val = 0.0;
+
+    #pragma unroll
+    for (unsigned int m = 0; m < ((nCols + BLOCK_SIZE - 1)/ BLOCK_SIZE); ++m)
+    {
+        if ((m * BLOCK_SIZE + threadIdx.x) <  nCols) x_shared[threadIdx.x] = dx[threadIdx.x + m * BLOCK_SIZE];
+        else                                         x_shared[threadIdx.x] = 0.f;
+        __syncthreads();
+
+        #pragma unroll
+        for (unsigned int e = 0; e < BLOCK_SIZE; ++e) {
+            // --- Column-major ordering - faster
+            y_val += dA[tid + (e + BLOCK_SIZE * m) * nRows] * x_shared[e];
+            // --- Row-major ordering - slower
+            //y_val += dA[tid * nCols + (e + BLOCK_SIZE * m)] * x_shared[e];
+        }
+
+        __syncthreads();
+    }
+
+    if (tid < nRows) dy[tid] = y_val;
 
 }
 
@@ -140,41 +192,56 @@ void NeuralNet::feedForward_gpu(vector<float>* inputs,
             h_curr[j*UNC+i] = n->getWeight(i);
          }
 	  }
-      
+	  
+      size_t allocSizeC = CNC * sizeof(float);
       // Allocate GPU memory
 	  CUDA_SAFE_CALL(cudaMalloc((void **)&d_up, allocSizeV));
 	  CUDA_SAFE_CALL(cudaMalloc((void **)&d_curr, allocSizeM));
-	  CUDA_SAFE_CALL(cudaMalloc((void **)&d_result, allocSizeV));
+	  CUDA_SAFE_CALL(cudaMalloc((void **)&d_result, allocSizeC));
 	  cudaMemset(d_up, 0, allocSizeV);
 	  cudaMemset(d_curr, 0, allocSizeM);
-	  cudaMemset(d_result, 0, allocSizeV);
+	  cudaMemset(d_result, 0, allocSizeC);
 	  
 	  // Transfer the arrays to the GPU memory
       CUDA_SAFE_CALL(cudaMemcpy(d_up, h_up, allocSizeV, cudaMemcpyHostToDevice));
 	  CUDA_SAFE_CALL(cudaMemcpy(d_curr, h_curr, allocSizeM, cudaMemcpyHostToDevice));
       
 	  // Launch the kernel
-	  dim3 dimGrid(4,6);
-      dim3 dimBlock(16,6);
+	  int size = UNC/32 +0.5;
+	  dim3 dimGrid(size,6);
+      dim3 dimBlock(32,6);
 	  kernel_VMM_global<<<dimGrid, dimBlock>>>(d_up, d_curr, d_result, UNC);
+	  //kernel_VMM_shared<<<dimGrid, dimBlock>>>(d_up, d_curr, d_result, CNC, UNC);
 
       // Check for errors during launch
 	  CUDA_SAFE_CALL(cudaPeekAtLastError());
 	  
 	  //Initialize results
-	  h_result              = (float *) malloc(allocSizeM);
-	  memset(h_result, 0, allocSizeM);  
+	  h_result              = (float *) malloc(allocSizeC);
+	  memset(h_result, 0, allocSizeC);  
 
       // Transfer the results back to the host
-      CUDA_SAFE_CALL(cudaMemcpy(h_result, d_result, allocSizeV, cudaMemcpyDeviceToHost));
-     
+      CUDA_SAFE_CALL(cudaMemcpy(h_result, d_result, allocSizeC, cudaMemcpyDeviceToHost));
+
 	  for (int j = 0; j < CNC; j++) 
 	  {
          Neuron *n = curr->getNeuron(j);
          n->setActivation(h_result[j]);
          n->setValue(sigmoid(h_result[j]));
       }
-	  
+     /*	  
+	  for (int j = 0; j < curr->neuronCount(); j++) {
+        Neuron *n = curr->getNeuron(j);
+        float sum = 0;
+        for (int i = 0; i < upstream->neuronCount(); i++) {
+          sum += n->getWeight(i) * upstream->getNeuron(i)->getValue();
+        }
+		printf("sum = %f, ", sum);
+		printf("hresult = %f\n", h_result[j]);
+        n->setActivation(sum);
+        n->setValue(sigmoid(sum));
+      }
+	 */
 	  // Free-up memory
 	  CUDA_SAFE_CALL(cudaFree(d_up));
 	  CUDA_SAFE_CALL(cudaFree(d_curr));
@@ -292,9 +359,11 @@ void NeuralNet::backPropagate_gpu(vector<float>* outputs, int teacher) {
 	  CUDA_SAFE_CALL(cudaMemcpy(d_delta, h_delta, allocSizeV, cudaMemcpyHostToDevice));
       
 	  // Launch the kernel
-	  dim3 dimGrid(4,4);
-      dim3 dimBlock(16,16);
+	  int size = UNC/32 +0.5;
+	  dim3 dimGrid(size,6);
+      dim3 dimBlock(32,6);
 	  kernel_VMM_global<<<dimGrid, dimBlock>>>(d_delta, d_weight, d_result, DNC);
+	  //kernel_VMM_shared<<<dimGrid, dimBlock>>>(d_delta, d_weight, d_result, DNC, CNC);
 
       // Check for errors during launch
 	  CUDA_SAFE_CALL(cudaPeekAtLastError());
