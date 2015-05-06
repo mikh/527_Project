@@ -1,8 +1,9 @@
 #include <cmath>
 #include <cstdio>
 #include <iostream>
+#include <pthread.h>
 
-#include "NeuralNet.h"
+#include "NeuralNet_pthread.h"
 
 using namespace std;
 
@@ -41,22 +42,8 @@ NeuralNet::~NeuralNet() {
   delete layers;
 }
 
-
-
-// Compute the outputs from a given set of inputs.
-void NeuralNet::feedForward(vector<double>* inputs,
-                            vector<double>* outputLayer,
-                            const double bias) {
-  Layer* inputLayer = (*layers)[0];
-  int N = inputLayer->neuronCount(), K;
-  for (int i = 0; i < N; i++) {
-    inputLayer->getNeuron(i)->setValue((*inputs)[i]);
-  }
-  for (int l = 1; l < numHiddenLayers + 2; l++) {
-    Layer *curr = (*layers)[l], *upstream = (*layers)[l-1];
-    N = curr->neuronCount();
-    K = upstream->neuronCount();
-    for (int j = 0; j < N; j++) {
+void NeuralNet::double_loop_work_thread_ff(Layer *curr, Layer *upstream, int N, int K){
+  for (int j = 0; j < N; j++) {
       Neuron *n = curr->getNeuron(j);
       double sum = 0, sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, sum5 = 0, sum6 = 0, sum7 = 0, sum8 = 0, sum9 = 0, sum10 = 0, sum11 = 0, sum12 = 0, sum13 = 0;
       int i = 0;
@@ -82,6 +69,73 @@ void NeuralNet::feedForward(vector<double>* inputs,
       n->setActivation(sum);
       n->setValue(sigmoid(sum));
     }
+}
+
+  struct thread_parameters{
+    Layer *upstream;
+    int K;
+    Neuron *n;
+  };
+
+void single_loop_work_thread_ff(void *ptr){
+      thread_parameters *p = (thread_parameters*) ptr;
+      Layer *upstream = p->upstream;
+      int K = p->K;
+      Neuron *n = p->n;
+
+      double sum = 0, sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, sum5 = 0, sum6 = 0, sum7 = 0, sum8 = 0, sum9 = 0, sum10 = 0, sum11 = 0, sum12 = 0, sum13 = 0;
+      int i = 0;
+      for (i = LOOP_UNROLLING; i < K; i+=(LOOP_UNROLLING+1)) {
+        sum1 += n->getWeight(i) * upstream->getNeuron(i)->getValue();
+        sum2 += n->getWeight(i-1) * upstream->getNeuron(i-1)->getValue();
+        sum3 += n->getWeight(i-2) * upstream->getNeuron(i-2)->getValue();
+        sum4 += n->getWeight(i-3) * upstream->getNeuron(i-3)->getValue();
+        sum5 += n->getWeight(i-4) * upstream->getNeuron(i-4)->getValue();
+        sum6 += n->getWeight(i-5) * upstream->getNeuron(i-5)->getValue();
+        sum7 += n->getWeight(i-6) * upstream->getNeuron(i-6)->getValue();
+        sum8 += n->getWeight(i-7) * upstream->getNeuron(i-7)->getValue();
+        sum9 += n->getWeight(i-8) * upstream->getNeuron(i-8)->getValue();
+        sum10 += n->getWeight(i-9) * upstream->getNeuron(i-9)->getValue();
+        sum11 += n->getWeight(i-10) * upstream->getNeuron(i-10)->getValue();
+        sum12 += n->getWeight(i-11) * upstream->getNeuron(i-11)->getValue();
+        sum13 += n->getWeight(i-12) * upstream->getNeuron(i-12)->getValue();
+      }
+      sum = sum1+sum2+sum3+sum4+sum5 + sum6 + sum7+sum8+sum9+sum10+sum11+sum12+sum13;
+      for (i; i < K; i++) {
+        sum += n->getWeight(i) * upstream->getNeuron(i)->getValue();
+      }
+      n->setActivation(sum);
+      n->setValue(sigmoid(sum));
+  }
+
+
+// Compute the outputs from a given set of inputs.
+void NeuralNet::feedForward(vector<double>* inputs,
+                            vector<double>* outputLayer,
+                            const double bias) {
+  Layer* inputLayer = (*layers)[0];
+  vector<pthread_t> threads;
+  int N = inputLayer->neuronCount(), K;
+  for (int i = 0; i < N; i++) {
+    inputLayer->getNeuron(i)->setValue((*inputs)[i]);
+  }
+  for (int l = 1; l < numHiddenLayers + 2; l++) {
+    Layer *curr = (*layers)[l], *upstream = (*layers)[l-1];
+    N = curr->neuronCount();
+    K = upstream->neuronCount();
+    for (int j = 0; j < N; j++) {
+      Neuron *n = curr->getNeuron(j);
+      thread_parameters *p;
+      p->upstream = upstream;
+      p->K = K;
+      p->n = n;
+      pthread_t new_pthread;
+      pthread_create(&new_pthread, NULL, single_loop_work_thread_ff, (void*)p);
+      threads.push_back(new_thread);
+      //single_loop_work_thread_ff(upstream, K, n);
+    }
+    for(int j = 0; j < threads.size(); j++)
+      pthread_join(threads[j], NULL);
   }
 
   Layer* lastLayer = (*layers)[numHiddenLayers+1];

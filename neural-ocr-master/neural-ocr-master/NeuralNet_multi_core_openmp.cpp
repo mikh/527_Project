@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define LOOP_UNROLLING 0
+#define LOOP_UNROLLING 12
 #define LOOP_UNROLLING_BACK_PROP 12
 
 // Initialize the neural network with the given input parameters, in turn
@@ -52,18 +52,18 @@ void NeuralNet::feedForward(vector<double>* inputs,
   for (int i = 0; i < N; i++) {
     inputLayer->getNeuron(i)->setValue((*inputs)[i]);
   }
-    #pragma omp parallel for
       for (int l = 1; l < numHiddenLayers + 2; l++) {
     Layer *curr = (*layers)[l], *upstream = (*layers)[l-1];
     N = curr->neuronCount();
     K = upstream->neuronCount();
+    #pragma omp parallel for
     for (int j = 0; j < N; j++) {
       Neuron *n = curr->getNeuron(j);
       double sum = 0, sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, sum5 = 0, sum6 = 0, sum7 = 0, sum8 = 0, sum9 = 0, sum10 = 0, sum11 = 0, sum12 = 0, sum13 = 0;
       int i = 0;
       for (i = LOOP_UNROLLING; i < K; i+=(LOOP_UNROLLING+1)) {
         sum1 += n->getWeight(i) * upstream->getNeuron(i)->getValue();
-     /*   sum2 += n->getWeight(i-1) * upstream->getNeuron(i-1)->getValue();
+        sum2 += n->getWeight(i-1) * upstream->getNeuron(i-1)->getValue();
         sum3 += n->getWeight(i-2) * upstream->getNeuron(i-2)->getValue();
         sum4 += n->getWeight(i-3) * upstream->getNeuron(i-3)->getValue();
         sum5 += n->getWeight(i-4) * upstream->getNeuron(i-4)->getValue();
@@ -74,7 +74,7 @@ void NeuralNet::feedForward(vector<double>* inputs,
         sum10 += n->getWeight(i-9) * upstream->getNeuron(i-9)->getValue();
         sum11 += n->getWeight(i-10) * upstream->getNeuron(i-10)->getValue();
         sum12 += n->getWeight(i-11) * upstream->getNeuron(i-11)->getValue();
-        sum13 += n->getWeight(i-12) * upstream->getNeuron(i-12)->getValue();*/
+        sum13 += n->getWeight(i-12) * upstream->getNeuron(i-12)->getValue();
         
       }
       sum = sum1+sum2+sum3+sum4+sum5 + sum6 + sum7+sum8+sum9+sum10+sum11+sum12+sum13;
@@ -112,6 +112,7 @@ void NeuralNet::backPropagate(vector<double>* outputs, int teacher) {
 
 
     N = curr->neuronCount();
+    #pragma omp parallel for
     for (int i = 0; i < N; i++) {
       double sum = 0, sum1=0, sum2=0, sum3=0, sum4=0, sum5=0, sum6=0, sum7=0, sum8=0, sum9=0, sum10=0, sum11=0, sum12=0;
       Neuron *n = curr->getNeuron(i);
