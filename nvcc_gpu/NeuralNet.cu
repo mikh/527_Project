@@ -16,8 +16,9 @@ inline void gpuAssert(cudaError_t code, char *file, int line, bool abort=true)
 	}
 }
 
+#define GLOBAL                         1
+#define SHARED                         0
 #define TILE_WIDTH                     16
-#define BLOCK_SIZE                     16
 #define PRINT_TIMER                    1
 
 __global__ void kernel_VMM_global(float* d_A, float* d_B, float* d_result, int UNC) {
@@ -32,56 +33,34 @@ __global__ void kernel_VMM_global(float* d_A, float* d_B, float* d_result, int U
 
 }
 
-/*
-__global__ void kernel_VMM_shared(float* d_A, float* d_B, float* d_result, int UNC, int CNC) {
-  __shared__ float ds_B[TILE_WIDTH];
-  float sum = 0;
-  int col = blockIdx.x * TILE_WIDTH + threadIdx.x;
-
-  #pragma unroll
-  for(int m = 0; m < UNC/TILE_WIDTH; ++m)
-  {
-    ds_B[threadIdx.x] = d_B[threadIdx.x + m*TILE_WIDTH];	
-	__syncthreads();
-   
-    for (int k = 0; k < TILE_WIDTH; ++k)
-      sum += d_A[k] * ds_B[col + (k + TILE_WIDTH*m)*CNC];
-    __syncthreads();
-  }
-  
-  d_result[col] = sum;
-}
-*/
-
-__global__ void kernel_VMM_shared(float* dx, float* dA, float* dy, const unsigned int nRows, const unsigned int nCols)
+__global__ void kernel_VMM_shared(float* d_A, float* d_B, float* d_result, int UNC, int CNC)
 {
-    const unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  __shared__ float ds_A[TILE_WIDTH]; 
+  int Row = blockIdx.x * TILE_WIDTH + threadIdx.x;
+  float sum = 0;
 
-    __shared__ float x_shared[BLOCK_SIZE];
-
-    float y_val = 0.0;
-
-    #pragma unroll
-    for (unsigned int m = 0; m < ((nCols + BLOCK_SIZE - 1)/ BLOCK_SIZE); ++m)
+  for (int m = 0; m < (UNC-1)/TILE_WIDTH+1; ++m)
     {
-        if ((m * BLOCK_SIZE + threadIdx.x) <  nCols) x_shared[threadIdx.x] = dx[threadIdx.x + m * BLOCK_SIZE];
-        else                                         x_shared[threadIdx.x] = 0.f;
-        __syncthreads();
-
-        #pragma unroll
-        for (unsigned int e = 0; e < BLOCK_SIZE; ++e) {
-            // --- Column-major ordering - faster
-            y_val += dA[tid + (e + BLOCK_SIZE * m) * nRows] * x_shared[e];
-            // --- Row-major ordering - slower
-            //y_val += dA[tid * nCols + (e + BLOCK_SIZE * m)] * x_shared[e];
-        }
-
-        __syncthreads();
-    }
-
-    if (tid < nRows) dy[tid] = y_val;
-
+      if((m*TILE_WIDTH + threadIdx.x) < UNC)
+      	ds_A[threadIdx.x] = d_A[m*TILE_WIDTH + threadIdx.x]; 
+      else
+      	ds_A[threadIdx.x] = 0;
+		
+      __syncthreads();	
+      
+      for (unsigned int k = 0; k < TILE_WIDTH; k++)
+      {	  
+          if(Row < CNC && (m*TILE_WIDTH +k) < UNC)
+    		sum += d_B[(m*TILE_WIDTH) + (Row*UNC)+k] * ds_A[k];    		
+	  }
+    	__syncthreads();
+    }		
+    
+  if(Row < CNC)  
+    d_result[Row] = sum; 
+  __syncthreads();
 }
+
 
 // Initialize the neural network with the given input parameters, in turn
 // initializing each layer with neurons of random weight.
@@ -171,24 +150,24 @@ void NeuralNet::feedForward_gpu(vector<float>* inputs,
       Layer *curr = (*layers)[l], *upstream = (*layers)[l-1];	  
 	  int CNC = curr->neuronCount();
 	  int UNC = upstream->neuronCount();
+	  //printf("CNC = %i, ",CNC);
+	  //printf("UNC = %i\n",UNC);
 	  
 	  //Initialize upstream
 	  size_t allocSizeV = UNC * sizeof(float);
 	  h_up                = (float *) malloc(allocSizeV);
 	  memset(h_up, 0, allocSizeV);
-	  for (int m = 0; m < UNC; m++){
-	     h_up[m] = upstream->getNeuron(m)->getValue();
-		 //printf("hresult = %f\n",h_result[m]); 
-	  }
 
 	  //Initialize current stream
 	  size_t allocSizeM = CNC * UNC * sizeof(float);
 	  h_curr              = (float *) malloc(allocSizeM);
 	  memset(h_curr, 0, allocSizeM);  
+	  
 	  for (int j = 0; j < CNC; j++) 
 	  {
          Neuron *n = curr->getNeuron(j);
          for (int i = 0; i < UNC; i++) {
+		    h_up[i] = upstream->getNeuron(i)->getValue();
             h_curr[j*UNC+i] = n->getWeight(i);
          }
 	  }
@@ -205,13 +184,21 @@ void NeuralNet::feedForward_gpu(vector<float>* inputs,
 	  // Transfer the arrays to the GPU memory
       CUDA_SAFE_CALL(cudaMemcpy(d_up, h_up, allocSizeV, cudaMemcpyHostToDevice));
 	  CUDA_SAFE_CALL(cudaMemcpy(d_curr, h_curr, allocSizeM, cudaMemcpyHostToDevice));
-      
+
+#if GLOBAL      
 	  // Launch the kernel
-	  int size = UNC/32 +0.5;
-	  dim3 dimGrid(size,6);
-      dim3 dimBlock(32,6);
+	  int size = UNC/32;
+	  dim3 dimGrid(size,size);
+	  dim3 dimBlock(32,32);
 	  kernel_VMM_global<<<dimGrid, dimBlock>>>(d_up, d_curr, d_result, UNC);
-	  //kernel_VMM_shared<<<dimGrid, dimBlock>>>(d_up, d_curr, d_result, CNC, UNC);
+#endif
+
+#if	SHARED
+	  int size = UNC/TILE_WIDTH;
+	  dim3 dimGrid(size,size);
+      dim3 dimBlock(TILE_WIDTH,TILE_WIDTH,1);
+	  kernel_VMM_shared<<<dimGrid, dimBlock>>>(d_up, d_curr, d_result, UNC, CNC);
+#endif
 
       // Check for errors during launch
 	  CUDA_SAFE_CALL(cudaPeekAtLastError());
@@ -229,19 +216,20 @@ void NeuralNet::feedForward_gpu(vector<float>* inputs,
          n->setActivation(h_result[j]);
          n->setValue(sigmoid(h_result[j]));
       }
-     /*	  
+/*      
 	  for (int j = 0; j < curr->neuronCount(); j++) {
         Neuron *n = curr->getNeuron(j);
         float sum = 0;
         for (int i = 0; i < upstream->neuronCount(); i++) {
           sum += n->getWeight(i) * upstream->getNeuron(i)->getValue();
         }
-		printf("sum = %f, ", sum);
-		printf("hresult = %f\n", h_result[j]);
+		//printf("sum = %f, ", sum);
+		//printf("hresult = %f\n", h_result[j]);
         n->setActivation(sum);
         n->setValue(sigmoid(sum));
       }
-	 */
+*/
+
 	  // Free-up memory
 	  CUDA_SAFE_CALL(cudaFree(d_up));
 	  CUDA_SAFE_CALL(cudaFree(d_curr));
@@ -359,12 +347,19 @@ void NeuralNet::backPropagate_gpu(vector<float>* outputs, int teacher) {
 	  CUDA_SAFE_CALL(cudaMemcpy(d_delta, h_delta, allocSizeV, cudaMemcpyHostToDevice));
       
 	  // Launch the kernel
-	  int size = UNC/32 +0.5;
-	  dim3 dimGrid(size,6);
-      dim3 dimBlock(32,6);
-	  kernel_VMM_global<<<dimGrid, dimBlock>>>(d_delta, d_weight, d_result, DNC);
-	  //kernel_VMM_shared<<<dimGrid, dimBlock>>>(d_delta, d_weight, d_result, DNC, CNC);
-
+#if GLOBAL  
+	  int size = CNC/32 +0.5;
+	  dim3 dimGrid(size,size);
+      dim3 dimBlock(32,32);
+      kernel_VMM_global<<<dimGrid, dimBlock>>>(d_delta, d_weight, d_result, DNC);
+#endif
+	  
+#if SHARED	  
+	  int size = CNC/TILE_WIDTH;
+	  dim3 dimGrid(size,size);
+      dim3 dimBlock(TILE_WIDTH,TILE_WIDTH,1);
+	  kernel_VMM_shared<<<dimGrid, dimBlock>>>(d_delta, d_weight, d_result, DNC, CNC);
+#endif
       // Check for errors during launch
 	  CUDA_SAFE_CALL(cudaPeekAtLastError());
 	  
@@ -378,6 +373,15 @@ void NeuralNet::backPropagate_gpu(vector<float>* outputs, int teacher) {
       for (int i = 0; i < CNC; i++) 
 	  {
          Neuron *n = curr->getNeuron(i);
+	/*
+	float sum = 0;
+      for (int j = 0; j < downstream->neuronCount(); j++) {
+        sum += downstream->getNeuron(j)->getWeight(i)
+            * downstream->getNeuron(j)->getDelta();
+      }
+	  printf("sum = %f, ", sum);
+	  printf("hresult = %f\n", h_result[i]);
+	*/ 
 		 n->setDelta(sigmoidPrime(n->getActivation()) * h_result[i]);
 		 
          for (int j = 0; j < DNC; j++) 
