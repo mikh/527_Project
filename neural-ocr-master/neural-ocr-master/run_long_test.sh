@@ -10,9 +10,6 @@ bias=60
 responseThreshold=40
 learningRate=55
 
-exit
-
-
 for training in `seq 100 100 1000`; do
 	for testing in `seq 100 100 1000`; do
 		for layers in `seq 1 10 100`; do
