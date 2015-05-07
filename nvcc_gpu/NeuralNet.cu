@@ -51,7 +51,11 @@ __global__ void kernel_VMM_shared(float* d_A, float* d_B, float* d_result, int U
       for (unsigned int k = 0; k < TILE_WIDTH; k++)
       {	  
           if(Row < CNC && (m*TILE_WIDTH +k) < UNC)
-    		sum += d_B[(m*TILE_WIDTH) + (Row*UNC)+k] * ds_A[k];    		
+		    //Slow implementation
+    		//sum += d_B[(m*TILE_WIDTH) + (Row*UNC)+k] * ds_A[k];
+			
+			//Faster implementation with coalescing 
+			sum += d_B[Row + (k + TILE_WIDTH * m) * CNC] * ds_A[k];
 	  }
     	__syncthreads();
     }		
