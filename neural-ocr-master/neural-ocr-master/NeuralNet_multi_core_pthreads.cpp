@@ -71,19 +71,26 @@ void NeuralNet::double_loop_work_thread_ff(Layer *curr, Layer *upstream, int N, 
     }
 }
 
+// Compute the sigmoid function.
+inline double sigmoid(double activation, double responseThreshold) {
+  return 1.0 / (1.0 + exp(-activation / responseThreshold));
+}
+
   struct thread_parameters{
     Layer *upstream;
     int K;
     Neuron *n;
+    double responseThreshold;
   };
 
-void single_loop_work_thread_ff(void *ptr){
-      thread_parameters *p = (thread_parameters*) ptr;
+void* single_loop_work_thread_ff(void *ptr){
+      struct thread_parameters *p = (struct thread_parameters*) ptr;
       Layer *upstream = p->upstream;
       int K = p->K;
       Neuron *n = p->n;
+      double responseThreshold = p->responseThreshold;
 
-      double sum = 0, sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, sum5 = 0, sum6 = 0, sum7 = 0, sum8 = 0, sum9 = 0, sum10 = 0, sum11 = 0, sum12 = 0, sum13 = 0;
+     double sum = 0, sum1 = 0, sum2 = 0, sum3 = 0, sum4 = 0, sum5 = 0, sum6 = 0, sum7 = 0, sum8 = 0, sum9 = 0, sum10 = 0, sum11 = 0, sum12 = 0, sum13 = 0;
       int i = 0;
       for (i = LOOP_UNROLLING; i < K; i+=(LOOP_UNROLLING+1)) {
         sum1 += n->getWeight(i) * upstream->getNeuron(i)->getValue();
@@ -105,7 +112,8 @@ void single_loop_work_thread_ff(void *ptr){
         sum += n->getWeight(i) * upstream->getNeuron(i)->getValue();
       }
       n->setActivation(sum);
-      n->setValue(sigmoid(sum));
+      n->setValue(sigmoid(sum, responseThreshold));
+      
   }
 
 
@@ -123,25 +131,32 @@ void NeuralNet::feedForward(vector<double>* inputs,
     Layer *curr = (*layers)[l], *upstream = (*layers)[l-1];
     N = curr->neuronCount();
     K = upstream->neuronCount();
+    threads.clear();
     for (int j = 0; j < N; j++) {
+     // printf("threading %d\n", N);
       Neuron *n = curr->getNeuron(j);
-      thread_parameters *p;
-      p->upstream = upstream;
-      p->K = K;
-      p->n = n;
+      thread_parameters p;
+      p.upstream = upstream;
+      p.K = K;
+      p.n = n;
+      p.responseThreshold = responseThreshold;
       pthread_t new_pthread;
-      pthread_create(&new_pthread, NULL, single_loop_work_thread_ff, (void*)p);
-      threads.push_back(new_thread);
+      pthread_create(&new_pthread, NULL, single_loop_work_thread_ff, &p);
+      threads.push_back(new_pthread);
       //single_loop_work_thread_ff(upstream, K, n);
     }
-    for(int j = 0; j < threads.size(); j++)
+    for(int j = 0; j < threads.size(); j++){
+  //    printf("joining");
       pthread_join(threads[j], NULL);
+    }
+
   }
 
   Layer* lastLayer = (*layers)[numHiddenLayers+1];
   for (int i = 0; i < lastLayer->neuronCount(); i++) {
     (*outputLayer)[i] = lastLayer->getNeuron(i)->getValue();
   }
+  printf("Feed forward end\n");
 }
 
 // Back propagate the errors to update the weights.
