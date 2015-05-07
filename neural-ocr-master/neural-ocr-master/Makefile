@@ -40,7 +40,7 @@ NeuralNet_single_core.o: Neuron.h Layer.h NeuralNet_single_core.cpp NeuralNet.h
 NeuralNet_multi_core_openmp.o: Neuron.h Layer.h NeuralNet_multi_core_openmp.cpp NeuralNet.h
 	$(CC) $(CFLAGS) -c Neuron.h NeuralNet_multi_core_openmp.cpp -fopenmp
 
-NeuralNet_multi_core_pthreads.o: Neuron.h Layer.h NeuralNet_multi_core_pthreads.cpp NeuralNet_pthread.h
+NeuralNet_multi_core_pthreads.o: Neuron.h Layer.h NeuralNet_multi_core_pthreads.cpp NeuralNet.h
 	$(CC) $(CFLAGS) -pthread -c Neuron.h NeuralNet_multi_core_pthreads.cpp
 
 ImageData.o: ImageData.cpp ImageData.h

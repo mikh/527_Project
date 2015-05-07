@@ -9,7 +9,7 @@
 #include <time.h>
 
 //#include "ImageData.h"
-#include "NeuralNet.h"
+#include "NeuralNet_pthread.h"
 
 #define IMG_SIZE 6*6
 #define ALPHABET_SIZE 10
@@ -39,7 +39,7 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
   vector<double>* inputs = new vector<double>(IMG_SIZE);
   vector<double>* outputs = new vector<double>(ALPHABET_SIZE);
 
-  //printf("running process_ocr");
+  printf("running process_ocr");
 
 
   for (int j = 0; j < iterations; j++) {
@@ -95,25 +95,21 @@ int process_ocr(bool training, NeuralNet& nn, double bias, int iterations) {
     }
   }
 
-   // printf("\nFeed-Forward time: %.2f(usecs)\n", (float)(ff_time/(iterations*ALPHABET_SIZE)));
-   // printf("Back-Propogate time: %.2f(usecs)\n", (float)(bp_time/(iterations*ALPHABET_SIZE)));
+    printf("\nFeed-Forward time: %.2f(usecs)\n", (float)(ff_time/(iterations*ALPHABET_SIZE)));
+    printf("Back-Propogate time: %.2f(usecs)\n", (float)(bp_time/(iterations*ALPHABET_SIZE)));
 
-  /*  f = fopen("output_file.txt", "a");
+    f = fopen("output_file.txt", "a");
     fprintf(f, "\nFeed-Forward time: %.2f(usecs)\n", (float)(ff_time/(iterations*ALPHABET_SIZE)));
     fprintf(f, "Back-Propogate time: %.2f(usecs)\n", (float)(bp_time/(iterations*ALPHABET_SIZE)));
-    fclose(f);*/
-
-    f = fopen("full_results.txt", "a");
-    fprintf(f, "%f\t%f\t%f\t%f\t", (float)(ff_time/(iterations*ALPHABET_SIZE)), ff_time, (float)(bp_time/(iterations*ALPHABET_SIZE)), bp_time);
     fclose(f);
-/*
+
     f = fopen("ff_file.txt", "a");
     fprintf(f, "%.2f\n", (float)(ff_time/(iterations*ALPHABET_SIZE)));
     fclose(f);
     f = fopen("bp_file.txt", "a");
     fprintf(f, "%.2f\n", (float)(bp_time/(iterations*ALPHABET_SIZE)));
     fclose(f);
-*/
+
 
 
   delete inputs;
@@ -217,33 +213,21 @@ int main(int argc, char *argv[]) {
                learningRate,
                responseThreshold);
 
-  f = fopen("full_results.txt", "a");
-  fprintf(f, "%d\t%d\t%d\t%f\t%f\t%f\t%d\t", training, layers, testing, bias, responseThreshold, learningRate, layerHeight);
-  fclose(f);
-
- /* f = fopen("output_file.txt", "a");
+  f = fopen("output_file.txt", "a");
   fprintf(f, "Training with %d images\n", testing);
   fclose(f);
-  */
   process_ocr(false, nn, bias, training);
-/*
+
   f = fopen("output_file.txt", "a");
   fprintf(f, "Testing with %d images\n", testing);
   fclose(f);
-  */
   int correct = process_ocr(true, nn, bias, testing);
 
-  f = fopen("full_results.txt", "a");
-  fprintf(f,"%f\n",(double)correct / (double)testing * 10);
-  fclose(f);
-
-/*
   cout << "Success: " << correct << " / " << testing * 10
        << " (" << ((double)correct / (double)testing * 10) << "%%)\n";
   f = fopen("success_file.txt", "a");
   fprintf(f, "%f%%\n", ((double)correct / (double)testing * 10));
   fclose(f);
-  */
 
   return 0;
 }
