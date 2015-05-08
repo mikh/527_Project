@@ -1,6 +1,0 @@
-Thu May 7 17:54:22 PDT 2015
-
-Base Case
-
-
-Single Core Case
