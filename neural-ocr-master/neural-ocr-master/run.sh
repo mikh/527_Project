@@ -29,6 +29,6 @@ echo "" >> output_file.txt
 
 echo "Multi Core Pthreads Case" >> output_file.txt
 
-./neural_read_multi_core_pthreads -t 600 -T 100 -l 1 -b 60 -a 40 -r 55 -h 45
+#./neural_read_multi_core_pthreads -t 600 -T 100 -l 1 -b 60 -a 40 -r 55 -h 45
 
 python perform_comparison.py
