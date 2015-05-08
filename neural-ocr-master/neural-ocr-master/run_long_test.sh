@@ -12,7 +12,7 @@ learningRate=55
 
 for training in `seq 100 100 1000`; do
 	for testing in `seq 100 100 1000`; do
-		for layers in `seq 1 10 100`; do
+		for layers in `seq 1 2 20`; do
 			#for bias in `seq 1 10 100`; do
 			#	for responseThreshold in `seq 1 10 100`; do
 			#		for learningRate in `seq 1 10 100`; do 
