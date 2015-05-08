@@ -6,17 +6,19 @@ fi
 make clean
 make all
 
+training=600
+testing=1000
 bias=60
 responseThreshold=40
 learningRate=55
 
-for training in `seq 100 100 1000`; do
-	for testing in `seq 100 100 1000`; do
+#for training in `seq 100 100 1000`; do
+#	for testing in `seq 100 100 1000`; do
 		for layers in `seq 1 2 20`; do
 			#for bias in `seq 1 10 100`; do
 			#	for responseThreshold in `seq 1 10 100`; do
 			#		for learningRate in `seq 1 10 100`; do 
-						for layerHeight in `seq 1 10 100`; do
+						for layerHeight in `seq 1 10 50`; do
 							echo $training.$testing.$layers.$bias.$responseThreshold.$learningRate.$layerHeight
 							./neural_read_base_case -t $training -T $testing -l $layers -b $bias -a $responseThreshold -r $learningRate -h $layerHeight
 							./neural_read_single_core -t $training -T $testing -l $layers -b $bias -a $responseThreshold -r $learningRate -h $layerHeight
@@ -27,6 +29,6 @@ for training in `seq 100 100 1000`; do
 			#	done
 			#done
 		done
-	done
-done
+#	done
+#done
 
