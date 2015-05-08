@@ -23,7 +23,7 @@ learningRate=55
 							./neural_read_base_case -t $training -T $testing -l $layers -b $bias -a $responseThreshold -r $learningRate -h $layerHeight
 							./neural_read_single_core -t $training -T $testing -l $layers -b $bias -a $responseThreshold -r $learningRate -h $layerHeight
 							./neural_read_multi_core_openmp -t $training -T $testing -l $layers -b $bias -a $responseThreshold -r $learningRate -h $layerHeight
-							./neural_read_multi_core_pthreads -t $training -T $testing -l $layers -b $bias -a $responseThreshold -r $learningRate -h $layerHeight
+							#./neural_read_multi_core_pthreads -t $training -T $testing -l $layers -b $bias -a $responseThreshold -r $learningRate -h $layerHeight
 						done
 			#		done
 			#	done
